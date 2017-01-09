@@ -1,7 +1,7 @@
 /*
   This is a more advanced ES6 example, animating and
   rendering the triangles with ThreeJS.
-  
+
   To test:
     npm install
     npm run start
@@ -25,11 +25,9 @@ const fs = require('fs')
 const tweenr = Tweenr({ defaultEase: 'expoOut' })
 const vertShader = fs.readFileSync(__dirname + '/vert.glsl', 'utf8')
 const fragShader = fs.readFileSync(__dirname + '/frag.glsl', 'utf8')
-let files = fs.readdirSync(__dirname + '/svg/entypo-social')
+let files = fs.readdirSync(__dirname + '/svg')
   .filter(file => /\.svg$/.test(file))
 files = shuffle(files)
-
-document.querySelector('.count').innerText = files.length
 
 const canvas = document.querySelector('canvas')
 canvas.addEventListener('touchstart', (ev) => ev.preventDefault())
@@ -40,7 +38,7 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   devicePixelRatio: window.devicePixelRatio
 })
-renderer.setClearColor(0x97c2c5, 1)
+renderer.setClearColor(0x111111, 1)
 
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100)
@@ -53,7 +51,7 @@ nextSvgMesh()
 function nextSvgMesh (delay) {
   delay = delay || 0
   var file = files[pointer++ % files.length]
-  loadSvg('demo/svg/entypo-social/' + file, (err, svg) => {
+  loadSvg('demo/svg/' + file, (err, svg) => {
     if (err) throw err
     renderSVG(svg, delay)
   })
@@ -61,28 +59,28 @@ function nextSvgMesh (delay) {
 
 function renderSVG (svg, delay) {
   delay = delay || 0
-  
-  const wireframe = pointer % 2 === 0
+
+  const wireframe = false// pointer % 2 === 0
 
   // grab all <path> data
   const svgPath = getSvgPaths(svg)
   // triangulate
   let complex = svgMesh3d(svgPath, {
-    scale: 10,
-    simplify: 0.01
+    scale: 20,
+    simplify: 0,
+    randomization: 280 + (Math.random() * 40)
     // play with this value for different aesthetic
-    // randomization: 500, 
   })
-  
+
   // split mesh into separate triangles so no vertices are shared
   complex = reindex(unindex(complex.positions, complex.cells))
-  
+
   // we will animate the triangles in the vertex shader
   const attributes = getAnimationAttributes(complex.positions, complex.cells)
-  
+
   // build a ThreeJS geometry from the mesh primitive
   const geometry = new createGeom(complex)
-  
+
   // our shader material
   const material = new THREE.ShaderMaterial({
     color: 0xffffff,
@@ -100,11 +98,11 @@ function renderSVG (svg, delay) {
   })
   const mesh = new THREE.Mesh(geometry, material)
   scene.add(mesh)
-  const interval = 2 + delay
-  
+  const interval = 1.8 + delay
+
   // explode in
   tweenr.to(material.uniforms.animate, {
-    value: 1, duration: 1.5, delay: delay, ease: 'expoInOut'
+    value: 1, duration: 1.1, delay: delay, ease: 'expoInOut'
   })
   tweenr.to(material.uniforms.scale, {
     value: 1, duration: 1, delay: delay
@@ -112,10 +110,10 @@ function renderSVG (svg, delay) {
 
   // explode out
   tweenr.to(material.uniforms.scale, {
-    delay: interval, value: 0, duration: 0.75, ease: 'expoIn'
+    delay: interval, value: 0, duration: 0.5, ease: 'expoIn'
   })
   tweenr.to(material.uniforms.animate, {
-    duration: 0.75, value: 0, delay: interval
+    duration: 0.5, value: 0, delay: interval
   }).on('complete', () => {
     geometry.dispose()
     geometry.vertices.length = 0
@@ -127,13 +125,13 @@ function renderSVG (svg, delay) {
 function getAnimationAttributes (positions, cells) {
   const directions = []
   const centroids = []
-  for (let i=0; i<cells.length; i++) {
+  for (let i = 0; i < cells.length; i++) {
     const [ f0, f1, f2 ] = cells[i]
     const triangle = [ positions[f0], positions[f1], positions[f2] ]
     const center = triangleCentroid(triangle)
     const dir = new THREE.Vector3().fromArray(center)
     centroids.push(dir, dir, dir)
-    
+
     const random = randomVec3([], Math.random())
     const anim = new THREE.Vector3().fromArray(random)
     directions.push(anim, anim, anim)
@@ -157,10 +155,10 @@ function createApp () {
     camera.updateProjectionMatrix()
     render()
   }
-  
+
   function render () {
     renderer.render(scene, camera)
   }
-  
+
   resize()
 }
